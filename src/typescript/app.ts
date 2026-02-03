@@ -289,9 +289,7 @@ class ScheduleOrganizerApp {
             this.showError('Error analyzing content: ' + error);
         } finally {
             analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = this.currentLanguage === 'es' ? 
-                '<span class="lang-es">Analizar con AI</span><span class="lang-en" style="display:none;">Analyze with AI</span>' :
-                '<span class="lang-es">Analizar con AI</span><span class="lang-en" style="display:none;">Analyze with AI</span>';
+            analyzeBtn.innerHTML = '<span class="lang-es">Analizar con AI</span><span class="lang-en" style="display:none;">Analyze with AI</span>';
             this.updateLanguageDisplay();
         }
     }
