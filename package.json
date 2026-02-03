@@ -1,0 +1,17 @@
+{
+  "name": "schedule-organizer",
+  "version": "1.0.0",
+  "description": "Assistant to organize a decent study schedule according to the class availability by period",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["schedule", "organizer", "education"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
