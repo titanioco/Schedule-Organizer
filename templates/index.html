@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Horarios / Schedule Organizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        /* Additional styles for schedule optimizer */
+        .course-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .course-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .course-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+        }
+        .course-card.selected {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .course-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+        }
+        .course-meta {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .credits-badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        .selection-summary {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .selection-summary.warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+        }
+        .selection-summary.valid {
+            background: #d4edda;
+            border: 1px solid #28a745;
+        }
+        .schedule-result {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .schedule-result.rank-1 {
+            border-color: #ffc107;
+            background: #fffceb;
+        }
+        .schedule-result.rank-2 {
+            border-color: #adb5bd;
+            background: #f8f9fa;
+        }
+        .schedule-result.rank-3 {
+            border-color: #cd7f32;
+            background: #fef5ef;
+        }
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .schedule-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .weekly-calendar {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+        }
+        .day-column {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 0.5rem;
+            min-height: 200px;
+        }
+        .day-column h5 {
+            margin: 0 0 0.5rem 0;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .time-slot {
+            background: #007bff;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+        }
+        .time-slot .time {
+            font-weight: bold;
+        }
+        .time-slot .course-name {
+            font-size: 0.7rem;
+        }
+        .btn-generate {
+            background: #28a745;
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-generate:hover {
+            background: #218838;
+        }
+        .btn-generate:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .group-list {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        .group-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            border-bottom: 1px dashed #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="app-title">
+                <span class="lang-es">Organizador de Horarios</span>
+                <span class="lang-en" style="display:none;">Schedule Organizer</span>
+            </h1>
+            <div class="language-toggle">
+                <button id="lang-toggle" class="btn-secondary">
+                    <span class="lang-es">English</span>
+                    <span class="lang-en" style="display:none;">Español</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="#optimizer" class="nav-link active" data-section="optimizer">
+                    <span class="lang-es">Optimizador</span>
+                    <span class="lang-en" style="display:none;">Optimizer</span>
+                </a></li>
+                <li><a href="#schedules" class="nav-link" data-section="schedules">
+                    <span class="lang-es">Horarios</span>
+                    <span class="lang-en" style="display:none;">Schedules</span>
+                </a></li>
+                <li><a href="#analysis" class="nav-link" data-section="analysis">
+                    <span class="lang-es">Análisis AI</span>
+                    <span class="lang-en" style="display:none;">AI Analysis</span>
+                </a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <!-- Schedule Optimizer Section -->
+            <section id="optimizer" class="section active">
+                <h2>
+                    <span class="lang-es">Optimizador de Horarios</span>
+                    <span class="lang-en" style="display:none;">Schedule Optimizer</span>
+                </h2>
+                
+                <!-- Selection Summary -->
+                <div id="selection-summary" class="selection-summary">
+                    <strong>
+                        <span class="lang-es">Selecciona tus materias:</span>
+                        <span class="lang-en" style="display:none;">Select your courses:</span>
+                    </strong>
+                    <span id="credits-count">0 créditos seleccionados / 0 credits selected</span>
+                    <span id="credits-status"></span>
+                </div>
+                
+                <!-- Course Selection -->
+                <div id="course-selector" class="course-selector">
+                    <p class="loading">
+                        <span class="lang-es">Cargando cursos...</span>
+                        <span class="lang-en" style="display:none;">Loading courses...</span>
+                    </p>
+                </div>
+                
+                <!-- Generate Button -->
+                <div style="text-align: center; margin: 2rem 0;">
+                    <button id="generate-btn" class="btn-generate" disabled>
+                        <span class="lang-es">Generar Horarios Óptimos</span>
+                        <span class="lang-en" style="display:none;">Generate Optimal Schedules</span>
+                    </button>
+                </div>
+                
+                <!-- Results -->
+                <div id="schedule-results" style="display: none;">
+                    <h3>
+                        <span class="lang-es">Horarios Generados</span>
+                        <span class="lang-en" style="display:none;">Generated Schedules</span>
+                        <span id="results-count"></span>
+                    </h3>
+                    <div id="schedule-list"></div>
+                </div>
+            </section>
+
+            <!-- Schedules Section -->
+            <section id="schedules" class="section">
+                <h2>
+                    <span class="lang-es">Horarios Disponibles</span>
+                    <span class="lang-en" style="display:none;">Available Schedules</span>
+                </h2>
+                <div id="schedules-list" class="schedules-list">
+                    <p class="loading">
+                        <span class="lang-es">Cargando horarios...</span>
+                        <span class="lang-en" style="display:none;">Loading schedules...</span>
+                    </p>
+                </div>
+            </section>
+
+            <!-- AI Analysis Section -->
+            <section id="analysis" class="section">
+                <h2>
+                    <span class="lang-es">Análisis AI de Contenido</span>
+                    <span class="lang-en" style="display:none;">AI Content Analysis</span>
+                </h2>
+                <div class="analysis-container">
+                    <div class="input-group">
+                        <label for="content-input">
+                            <span class="lang-es">Contenido del Curso:</span>
+                            <span class="lang-en" style="display:none;">Course Content:</span>
+                        </label>
+                        <textarea id="content-input" rows="6" placeholder="Ingrese el contenido del curso para analizar / Enter course content to analyze"></textarea>
+                    </div>
+                    <button id="analyze-btn" class="btn-primary">
+                        <span class="lang-es">Analizar con AI</span>
+                        <span class="lang-en" style="display:none;">Analyze with AI</span>
+                    </button>
+                    <div id="analysis-results" class="analysis-results" style="display:none;">
+                        <!-- Analysis results will be inserted here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>
+                <span class="lang-es">© 2024 Organizador de Horarios - Asistente de estudio inteligente</span>
+                <span class="lang-en" style="display:none;">© 2024 Schedule Organizer - Intelligent study assistant</span>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Modal for class details -->
+    <div id="class-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-body">
+                <!-- Modal content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Schedule Optimizer Logic
+        const MIN_CREDITS = 6;
+        const MAX_CREDITS = 21;
+        let selectedCourses = new Set();
+        let coursesData = [];
+        
+        // Load available courses
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/available-courses');
+                const data = await response.json();
+                
+                if (data.success && data.courses) {
+                    coursesData = data.courses;
+                    renderCourseSelector(data.courses);
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                document.getElementById('course-selector').innerHTML = 
+                    '<p class="error">Error loading courses. Please refresh.</p>';
+            }
+        }
+        
+        function renderCourseSelector(courses) {
+            const container = document.getElementById('course-selector');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<p>No courses available. Add PDF files to data/schedules/</p>';
+                return;
+            }
+            
+            container.innerHTML = courses.map(course => `
+                <div class="course-card" data-code="${course.code}" onclick="toggleCourse('${course.code}')">
+                    <h4>${course.name}</h4>
+                    <div class="course-meta">
+                        <span class="credits-badge">${course.credits} créditos</span>
+                        <span>${course.groups.length} grupos disponibles</span>
+                    </div>
+                    <div class="course-meta">Código: ${course.code}</div>
+                    <div class="group-list">
+                        ${course.groups.slice(0, 3).map(g => `
+                            <div class="group-item">
+                                <span>Grupo ${g.group_number}</span>
+                                <span>${g.time_slots.length} horarios</span>
+                            </div>
+                        `).join('')}
+                        ${course.groups.length > 3 ? `<div class="group-item">... y ${course.groups.length - 3} más</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function toggleCourse(code) {
+            const card = document.querySelector(`[data-code="${code}"]`);
+            
+            if (selectedCourses.has(code)) {
+                selectedCourses.delete(code);
+                card.classList.remove('selected');
+            } else {
+                selectedCourses.add(code);
+                card.classList.add('selected');
+            }
+            
+            updateSelectionSummary();
+        }
+        
+        function updateSelectionSummary() {
+            const totalCredits = [...selectedCourses].reduce((sum, code) => {
+                const course = coursesData.find(c => c.code === code);
+                return sum + (course ? course.credits : 0);
+            }, 0);
+            
+            document.getElementById('credits-count').textContent = 
+                `${totalCredits} créditos seleccionados / ${selectedCourses.size} materias`;
+            
+            const summary = document.getElementById('selection-summary');
+            const status = document.getElementById('credits-status');
+            const btn = document.getElementById('generate-btn');
+            
+            summary.classList.remove('warning', 'valid');
+            
+            if (totalCredits < MIN_CREDITS) {
+                status.textContent = ` (mínimo ${MIN_CREDITS} créditos)`;
+                summary.classList.add('warning');
+                btn.disabled = true;
+            } else if (totalCredits > MAX_CREDITS) {
+                status.textContent = ` (máximo ${MAX_CREDITS} créditos)`;
+                summary.classList.add('warning');
+                btn.disabled = true;
+            } else if (selectedCourses.size === 0) {
+                status.textContent = '';
+                btn.disabled = true;
+            } else {
+                status.textContent = ' ✓ Listo para generar';
+                summary.classList.add('valid');
+                btn.disabled = false;
+            }
+        }
+        
+        async function generateSchedules() {
+            const btn = document.getElementById('generate-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
+            
+            try {
+                const response = await fetch('/api/generate-schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        selected_courses: [...selectedCourses],
+                        min_credits: MIN_CREDITS,
+                        max_credits: MAX_CREDITS
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderScheduleResults(data.schedules, data.summary);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error generating schedules:', error);
+                alert('Error generating schedules. Please try again.');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = `
+                <span class="lang-es">Generar Horarios Óptimos</span>
+                <span class="lang-en" style="display:none;">Generate Optimal Schedules</span>
+            `;
+            updateSelectionSummary();
+        }
+        
+        function renderScheduleResults(schedules, summary) {
+            const resultsDiv = document.getElementById('schedule-results');
+            const listDiv = document.getElementById('schedule-list');
+            const countSpan = document.getElementById('results-count');
+            
+            resultsDiv.style.display = 'block';
+            countSpan.textContent = ` (${schedules.length} opciones)`;
+            
+            if (!schedules || schedules.length === 0) {
+                listDiv.innerHTML = '<p>No se encontraron horarios válidos sin conflictos.</p>';
+                return;
+            }
+            
+            listDiv.innerHTML = schedules.slice(0, 20).map(schedule => `
+                <div class="schedule-result rank-${schedule.rank <= 3 ? schedule.rank : 'other'}">
+                    <div class="schedule-header">
+                        <h4>#${schedule.rank} - ${schedule.id}</h4>
+                        <span>Puntaje: ${schedule.score.toFixed(1)}</span>
+                    </div>
+                    
+                    <div class="schedule-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${schedule.total_credits}</div>
+                            <div>Créditos</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${schedule.total_study_hours}h</div>
+                            <div>Estudio/semana</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${schedule.gap_minutes} min</div>
+                            <div>Huecos</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${schedule.days_used}</div>
+                            <div>Días</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${schedule.earliest_start}-${schedule.latest_end}</div>
+                            <div>Horario</div>
+                        </div>
+                    </div>
+                    
+                    <div class="weekly-calendar">
+                        ${renderWeeklyCalendar(schedule.weekly_view)}
+                    </div>
+                    
+                    <details>
+                        <summary>Ver grupos seleccionados</summary>
+                        <ul>
+                            ${schedule.selected_groups.map(g => 
+                                `<li>${g.class_name} - Grupo ${g.group_number} (${g.professor})</li>`
+                            ).join('')}
+                        </ul>
+                    </details>
+                </div>
+            `).join('');
+        }
+        
+        function renderWeeklyCalendar(weeklyView) {
+            const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            
+            return days.map(day => {
+                const slots = weeklyView[day] || [];
+                return `
+                    <div class="day-column">
+                        <h5>${day}</h5>
+                        ${slots.map(slot => `
+                            <div class="time-slot">
+                                <div class="time">${slot.start_time} - ${slot.end_time}</div>
+                                <div class="course-name">${slot.class_name}</div>
+                                <div class="course-name">Gr. ${slot.group_number}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Initialize
+        document.getElementById('generate-btn').addEventListener('click', generateSchedules);
+        
+        // Load courses when page loads
+        document.addEventListener('DOMContentLoaded', loadCourses);
+    </script>
+</body>
+</html>
